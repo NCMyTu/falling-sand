@@ -1,5 +1,5 @@
-EMPTY = 0
-SAND = 1
+local ParticleType = require("particle_type")
+local World = require("world")
 
 particleSize = 5
 
@@ -17,117 +17,33 @@ function love.load()
 
     love.window.setMode(windowWidth, windowHeight)
 
-    world = createWorld()
+    world = World:new(worldWidth, worldHeight, particleSize)
 end
 
 function love.update()
     if love.mouse.isDown(1) then
+        -- randomize spawn location
         local x, y = love.mouse.getPosition()
         local i = math.floor(x / particleSize) + 1
         local j = math.floor(y / particleSize) + 1
+        local spawnRadius = 2
+        i = i + love.math.random(-spawnRadius, spawnRadius)
+        j = j + love.math.random(-spawnRadius, spawnRadius)
 
-        createParticle(SAND, i, j)
-
-        local dx = love.math.random(-3, 3)
-        local dy = love.math.random(-3, 3)
-        local ni = i + dx
-        local nj = j + dy
-
-        if ni >= 1 and ni <= worldWidth and nj >= 1 and nj <= worldHeight then
-            createParticle(SAND, ni, nj)
+        if i >= 1 and i <= world.width and j >= 1 and j <= world.height then
+            world:createParticle(i, j, ParticleType.SAND)
         end
     end
     
-    updateWorld()
+    world:update()
 
-    local count = 0
-    for i = 1, worldWidth do
-        for j = 1, worldHeight do
-            if world[i][j] ~= EMPTY then
-                count = count + 1
-            end
-        end
-    end
-    debugStr = "Number of particles: " .. tostring(count)
+    -- for later use
+    debugStr = ""
 end
 
 function love.draw()
     love.graphics.setColor(1, 1, 1)
-    love.graphics.print(debugStr, largeFont, 3, 3)
+    love.graphics.print("FPS: " .. love.timer.getFPS() .. "\n" .. debugStr, largeFont, 3, 3)
 
-    renderWorld()
-end
-
-function createWorld()
-    local world = {}
-
-    for i = 1, worldWidth do
-        world[i] = {}
-
-        for j = 1, worldHeight do
-            world[i][j] = EMPTY
-        end
-    end
-
-    return world
-end
-
-function renderWorld()
-    love.graphics.setLineWidth(0.1)
-
-    for i = 1, worldWidth do
-        for j = 1, worldHeight do
-            if world[i][j] == EMPTY then
-                -- love.graphics.setColor(1, 1, 1)
-                -- love.graphics.rectangle("line", (i - 1) * particleSize, (j - 1) * particleSize, particleSize, particleSize)
-            elseif world[i][j] == SAND then
-                love.graphics.setColor(0.761, 0.698, 0.502)
-                love.graphics.rectangle("fill", (i - 1) * particleSize, (j - 1) * particleSize, particleSize, particleSize)
-            end
-        end
-    end
-end
-
-function createParticle(particleType, i, j)
-    world[i][j] = particleType
-end
-
-function updateSand(i, j)
-    -- fall straight down
-    if j + 1 <= worldHeight and world[i][j + 1] == EMPTY then
-        world[i][j] = EMPTY
-        world[i][j + 1] = SAND
-
-    -- try to fall diagonally
-    elseif j + 1 <= worldHeight then
-        local canLeft  = i > 1 and world[i - 1][j + 1] == EMPTY
-        local canRight = i < worldWidth and world[i + 1][j + 1] == EMPTY
-
-        -- choose a direction randomly if both are free
-        if canLeft and canRight then
-            if love.math.random() < 0.5 then
-                world[i][j] = EMPTY
-                world[i - 1][j + 1] = SAND
-            else
-                world[i][j] = EMPTY
-                world[i + 1][j + 1] = SAND
-            end
-        elseif canLeft then
-            world[i][j] = EMPTY
-            world[i - 1][j + 1] = SAND
-        elseif canRight then
-            world[i][j] = EMPTY
-            world[i + 1][j + 1] = SAND
-        end
-    end
-end
-
-function updateWorld()
-    for j = worldHeight, 1, -1 do
-        for i = 1, worldWidth do
-            if world[i][j] == SAND then
-                updateSand(i, j)
-            end
-        end
-    end
+    world:render()
 end
